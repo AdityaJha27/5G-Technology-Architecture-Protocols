@@ -643,4 +643,164 @@ HTTP GET to the URI {apiRoot}/{apiName}/{apiVersion}/nf-instances/?<query parame
 
 ## UE State Management in 5G
 
-> Content coming soon...
+### 1. Introduction to UE State Management
+
+- 5G System needs to keep track of each UE's:
+  - **Availability**
+  - **Reachability**
+- Keeps track of **three states** of UE:
+  - Radio Resource Control **(RRC)**
+  - Connection Management **(CM)**
+  - Registration Management **(RM)**
+
+---
+
+### 2. Radio Resource Control (RRC) State
+
+Represents the **status of RRC connection between UE and gNB.**
+
+#### RRC-Idle
+- No RRC connection
+- UE monitors broadcast info
+- Cell selection / reselection
+
+#### RRC-Connected
+- Active RRC connection exists
+- UE location known to **cell level**
+- RRC connection required for:
+  - Registration
+  - Voice Call etc.
+
+#### RRC-Inactive *(New in 5G)*
+- Intermediate state introduced in 5G
+- RRC connection context (parameters) stored
+- RRC connection can be activated with **minimum signalling**
+- Decrease in signalling overhead
+- Suitable for **Massive IoT**
+
+**RRC State Transitions:**
+
+```
+RRC-Idle  <──────────────────────────  RRC-Connected
+   │          RRC Connection Release        │
+   │                                        │
+   └──────────────────────────────────>  RRC-Connected
+        RRC Connection Establish            │
+                                     RRC Connection Suspend
+                                            │
+                                            ▼
+                                      RRC-Inactive
+                                            │
+                                     RRC Connection Resume
+                                            │
+                                            ▼
+                                      RRC-Connected
+```
+
+---
+
+### 3. UE Mobility in RRC_Inactive State — RAN Areas
+
+- **RAN areas** are very like Tracking Areas (TAs), but relevant to the RAN
+- **Size of RAN area:**
+  - Minimum → one cell of a TA
+  - Maximum → all the cells of a TA
+- RAN areas do **not overlap**
+- Each RAN area is identified using a **RAN area ID**
+
+---
+
+### 4. UE Mobility in RRC_Inactive — RAN-based Notification Areas (RNAs)
+
+- One or more RAN areas of same TA can be grouped as **RNA**
+- The 5G RAN can assign a RNA to a UE
+- In **RRC_INACTIVE** state:
+  - The RAN knows the RNA in which mobile is in
+  - RNA notifies the network if it moves to another RNA
+  - To contact UE, RAN pages all the cells in a RNA
+- **Reduced Signaling:** RNA updates instead of cell updates
+
+---
+
+### 5. Connection Management (CM) State
+
+Represents whether an **active NAS connection exists between UE and AMF** or not.
+- Also called **N1 signalling link**
+- UE TA list = Registration Area
+
+| State | Description |
+|---|---|
+| **CM-Idle** | No N1 connection; UE Registration Area known to AMF |
+| **CM-Connected** | Active N1 connection; AMF knows UE's current gNB |
+
+**CM-Connected used for:**
+- Registration
+- Data transfer
+- Registration Update
+
+**CM State Transitions:**
+```
+CM-Idle  ──── RRC Connection Established ────>  CM-Connected
+CM-Idle  <─── RRC Connection Released    ─────  CM-Connected
+```
+
+---
+
+### 6. Registration Management (RM) State
+
+Represents whether the **UE is registered with the 5G Core or not.**
+
+| State | Description |
+|---|---|
+| **RM-Deregistered** | UE switched off or deregistered |
+| **RM-Registered** | UE registered with 5GC, served by an AMF, assigned a 5G-GUTI |
+
+**RM-Registered details:**
+- Registered with 5GC
+- Served by an AMF
+- Assigned a **5G-GUTI**
+- Registration update when UE enters another RA (Registration Area)
+
+**RM State Transitions:**
+```
+RM-Deregistered  ──── Registration ────>  RM-Registered
+RM-Deregistered  <─── Deregistration ───  RM-Registered
+```
+
+---
+
+### 7. Combined State Diagram
+
+The three state machines (RRC, CM, RM) work together:
+
+| Combined State | RRC State | CM State | RM State |
+|---|---|---|---|
+| UE Power UP → | RRC-IDLE | CM-IDLE | RM-Deregistered |
+| After Registration → | RRC-IDLE | CM-IDLE | RM-Registered |
+| Active Connection → | RRC-Connected | CM-Connected | RM-Registered |
+| Inactive (5G new) → | RRC-INACTIVE | CM-Connected | RM-Registered |
+
+**RM-Registered + CM-Connected (RRC-Connected):**
+- Cell location known
+- Handovers possible
+- PDU sessions active
+
+**RM-Registered + CM-Connected (RRC-Inactive):**
+- RNA Update
+- Cell Selection
+- RAN Paging
+- RRC connection can be activated with little signaling
+
+**RM-Deregistered / RM-Registered + CM-IDLE (RRC-IDLE):**
+- Cell selection / reselection
+- No RRC signalling connection
+
+---
+
+### Summary
+
+| State Type | States | Managed By |
+|---|---|---|
+| **RRC** | Idle, Inactive, Connected | gNB |
+| **CM** | Idle, Connected | AMF (N1 link) |
+| **RM** | Deregistered, Registered | AMF |
