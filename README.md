@@ -406,9 +406,238 @@ UE selects network in this priority order:
 
 ---
 
+
 ## Service Based Architecture
 
-> Content coming soon...
+### 1. 5G Service Based Architecture (SBA)
+
+- Service Based Architecture introduced to increase **modularity**
+- A **"Network Function"** provides one or more services to other Network Functions in the network
+- These services are made available over **Service Based Interfaces (SBI)** of Network Function interfaces
+
+---
+
+### 2. 5G Service Based Vs Reference Point Architecture
+
+Two ways to represent the same 5G Core architecture:
+
+| Architecture | Description |
+|---|---|
+| **Service Based Architecture** | NFs expose services via SBI (e.g., Namf, Nsmf, Nnrf) |
+| **Reference Point Architecture** | NFs connected via defined reference points (e.g., N1, N2, N3, N4...) |
+
+**Key Network Functions:**
+
+| NF | Service Based Interface |
+|---|---|
+| AMF | Namf |
+| SMF | Nsmf |
+| NRF | Nnrf |
+| UDM | Nudm |
+| PCF | Npcf |
+| AUSF | Nausf |
+| NEF | Nnef |
+| AF | Naf |
+
+---
+
+### 3. Main Mechanisms for NF Services
+
+#### Request-Response
+- NF service consumer **requests** a service
+- NF service provider **returns**:
+  - Information to the consumer, or
+  - Performs an action, or both
+
+#### Subscribe-Notify
+- NF service consumer **subscribes** to provider's service
+- Provider **notifies** the consumer about:
+  - The occurrence of events, or
+  - Periodic updates related to the service
+
+---
+
+### 4. HTTP/2 for 5G Core Network
+
+- **HTTP/2** used for communication between NFs
+- Easy deployment in **cloud environment**
+- HTTP/2 is already very widely deployed:
+  - Well developed security mechanisms
+  - Well developed third party applications
+- Easy integration of **operator and third-party applications**
+
+**HTTP/2 on Web vs HTTP/2 in 5G Core:**
+
+| | Internet (Web) | 5G Core |
+|---|---|---|
+| Request | HTTP Request with possible content | HTTP Request with possible JSON content |
+| Response | HTML, JPG, PDF | JSON content |
+
+---
+
+### 5. JSON (JavaScript Object Notation) Format
+
+- JSON uses **name-value pairs** to represent data
+- Used as the message body format in 5G Core HTTP/2 communications
+
+**Example:**
+```json
+{
+  "empid": "SJ011MS",
+  "personal": {
+    "name": "Smith Jones",
+    "gender": "Male",
+    "age": 28,
+    "address": {
+      "streetaddress": "7 24th Street",
+      "city": "New York",
+      "state": "NY",
+      "postalcode": "10038"
+    }
+  },
+  "profile": {
+    "designation": "Deputy General",
+    "department": "Finance"
+  }
+}
+```
+
+---
+
+### 6. Concept of Resource in 5G SBA
+
+- Resources are located and manipulated as **URI (Uniform Resource Identifier)**
+- NF sends **HTTP Request to URI** → NF responds with **HTTP Response**
+
+**Examples of Resources:**
+- PDU Session → context, QoS Policy
+- NF registration with NRF
+
+---
+
+### 7. HTTP Methods used in 5GC
+
+| Method | Description |
+|---|---|
+| **PUT** | Create or Replace a resource |
+| **GET** | Read a resource (no modification) |
+| **PATCH** | Partially update a resource |
+| **DELETE** | Delete a resource |
+| **POST** | Create a resource / Process enclosed information / Execute a remote call |
+
+---
+
+### 8. HTTP Responses in 5G
+
+Responses defined by **three digit code:**
+
+| Code Range | Type | Examples |
+|---|---|---|
+| **2xx** | Success | 200 OK, 201 Created, 202 Accepted |
+| **4xx** | Client Error | 400 Bad Request, 404 Not Found |
+| **5xx** | Server Error | 500 Internal Server Error, 503 Server Unreachable |
+
+---
+
+### 9. Naming Scheme for NF Services
+
+Format: **`Nnfname_ServiceName_ServiceOperation Method`**
+
+| Part | Meaning |
+|---|---|
+| **Nnfname** | Service Based Interface used to provide the service |
+| **ServiceName** | Name of Service (API) |
+| **ServiceOperation** | Type of operation |
+| **Method** | How service operation is used |
+
+**Examples:**
+- `Nsmf_PDUSession_Create Request`
+- `Nsmf_PDUSession_Create Response`
+
+---
+
+### 10. REST Applied to 5G Services
+
+- **REST** (Representational State Transfer) — an architectural style for softwares
+- Defines a set of rules for design of distributed applications
+- The **5GC service APIs** are implemented according to the REST paradigm
+- In the context of 5GC, rules of REST applied to **HTTP protocol**
+
+**Principles of RESTful Design:**
+
+| Principle | Description |
+|---|---|
+| **Client/Server** | Split of responsibilities between client and server |
+| **Stateless** | Each request must contain all information necessary; session state kept entirely on client |
+| **Cacheable** | Clients get indication from servers whether received information can be cached |
+| **Uniform Interface** | Identification and manipulation of resources through URIs |
+| **Layered System** | Each component cannot "see" beyond the immediate layer it is interacting with |
+
+---
+
+### 11. Use Case 1 — Network Function Service Registration
+
+NF registers itself with the **NRF** so other NFs can discover it.
+
+**Registration Request — HTTP PUT:**
+```
+HTTP PUT to the URI {apiRoot}/{apiName}/{apiVersion}/nf-instances/{nfInstanceID}
+```
+
+**ApiRoot details:**
+- Scheme: `HTTP://` or `HTTPS://`
+- Host name: `nrf.5gc.mnc015.mcc234.3gppnetwork.org`
+- Optional port number
+- ApiName: `nnrf-nfm`
+- ApiVersion: `v1`
+- NfInstanceID: Unique ID
+
+**JSON Message Body (NFRegister Request) contains:**
+- **nfInstanceID** — unique identity of NF instance
+- **nfType** — e.g., 'NRF', 'UDM', 'AMF', 'SMF'
+- **nfStatus** — 'REGISTERED' or 'SUSPENDED'
+- **sNssais** — network slices that NF supports
+- **capacity** — static capacity of NF
+- **load** — %age dynamic load on NF
+- IP address or domain name of NF
+
+**Registration Response:**
+- **HTTP 201 Created**
+- JSON Message Body contains **heartbeat timer** (maximum number of seconds between heartbeat requests from the network function)
+
+**NF Update — HTTP PATCH:**
+```
+HTTP PATCH to the URI {apiRoot}/{apiName}/{apiVersion}/nf-instances/{nfInstanceID}
+```
+- Response: **HTTP 200 OK**
+
+---
+
+### 12. Use Case 2 — NF Service Discovery
+
+NF discovers other NFs by querying the **NRF**.
+
+**Flow:**
+1. Requester NF sends `Nnrf_NFDiscovery_NFDiscover Request` → NRF in serving PLMN
+2. NRF in serving PLMN forwards request → NRF in target PLMN
+3. NRF in target PLMN responds → NRF in serving PLMN
+4. NRF in serving PLMN responds → Requester NF
+
+**HTTP Method used:**
+```
+HTTP GET to the URI {apiRoot}/{apiName}/{apiVersion}/nf-instances/?<query parameters>
+```
+
+**Query Parameters:**
+- service-names
+- target-nf-type
+- target-plmn
+- requester-plmn
+- Snssais: network slices supported by target services
+
+**Response — HTTP 200 OK with JSON Body:**
+- **ValidityPeriod**
+- **NfInstances** (array of NFProfile)
 
 ---
 
